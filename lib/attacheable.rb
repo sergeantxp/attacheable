@@ -7,6 +7,10 @@ module Attacheable
   end
   
   module ClassMethods
+    def attachment_options
+      @attachment_options
+    end
+    
     def regenerate_thumbnails!(thumbnail)
       connection.select_values("select id from #{table_name}").each do |object_id|
         object = find_by_id(object_id)
@@ -25,6 +29,10 @@ module Attacheable
         File.read(path)
       end
     end
+  end
+  
+  def attachment_options
+    self.class.attachment_options
   end
   
   def full_filename_without_creation(thumbnail = nil)
