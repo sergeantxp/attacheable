@@ -16,6 +16,15 @@ module Attacheable
         end
       end
     end
+    
+    def data_by_path_info(path_info)
+      id1, id2, path = path_info
+      return nil unless id1 && id2 && path
+      object = find(id1.to_i*1000 + id2.to_i)
+      if path = object.full_filename_by_path(path)
+        File.read(path)
+      end
+    end
   end
   
   def full_filename_without_creation(thumbnail = nil)
