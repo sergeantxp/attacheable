@@ -16,7 +16,7 @@ module Attacheable
         object = find_by_id(object_id)
         if object
           FileUtils.rm_f(object.full_filename_without_creation(thumbnail))
-          object.full_filename(thumbnail)
+          #object.full_filename(thumbnail)
         end
       end
     end
