@@ -21,7 +21,7 @@ module Attacheable
             to_remove = Dir["#{File.dirname(object.full_filename_without_creation)}/*"] - [object.full_filename_without_creation]
             FileUtils.rm_f(to_remove)
           end
-          object.full_filename(thumbnail)
+          object.full_filename_with_creation(thumbnail)
         end
       end
     end
