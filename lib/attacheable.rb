@@ -11,11 +11,16 @@ module Attacheable
       @attachment_options
     end
     
-    def regenerate_thumbnails!(thumbnail)
+    def regenerate_thumbnails!(thumbnail = nil)
       connection.select_values("select id from #{table_name}").each do |object_id|
         object = find_by_id(object_id)
         if object
-          FileUtils.rm_f(object.full_filename_without_creation(thumbnail))
+          if thumbnail
+            FileUtils.rm_f(object.full_filename_without_creation(thumbnail))
+          else
+            to_remove = Dir["#{File.dirname(object.full_filename_without_creation)}/*"] - [object.full_filename_without_creation]
+            FileUtils.rm_f(to_remove)
+          end
           #object.full_filename(thumbnail)
         end
       end
