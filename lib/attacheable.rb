@@ -21,7 +21,7 @@ module Attacheable
             to_remove = Dir["#{File.dirname(object.full_filename_without_creation)}/*"] - [object.full_filename_without_creation]
             FileUtils.rm_f(to_remove)
           end
-          object.full_filename_with_creation(thumbnail)
+          #object.full_filename_with_creation(thumbnail)
         end
       end
     end
@@ -46,7 +46,7 @@ module Attacheable
   end
   
   def full_filename(thumbnail = nil)
-    full_filename_without_creation(thumbnail)
+    full_filename_with_creation(thumbnail)
   end
   
   def full_filename_without_creation(thumbnail = nil)
