@@ -34,6 +34,15 @@ module Attacheable
   def attachment_options
     self.class.attachment_options
   end
+
+  
+  def full_filename_with_creation(thumbnail = nil)
+    create_thumbnail_if_required(thumbnail, full_filename_without_creation(thumbnail))
+  end
+  
+  def full_filename(thumbnail = nil)
+    full_filename_without_creation(thumbnail)
+  end
   
   def full_filename_without_creation(thumbnail = nil)
     file_system_path = attachment_options[:path_prefix]
@@ -42,7 +51,7 @@ module Attacheable
   
   def full_filename_by_path(path)
     thumbnail = path.gsub(%r(^#{Regexp.escape(filename.gsub(/\.([^\.]+)$/, ''))}_), '').gsub(/\.([^\.]+)$/, '')
-    full_filename(thumbnail)
+    full_filename_with_creation(thumbnail)
   end
 
   # Gets the public path to the file
@@ -59,11 +68,6 @@ module Attacheable
   # you can thank Jamis Buck for this: http://www.37signals.com/svn/archives2/id_partitioning.php
   def partitioned_path(*args)
     ("%08d" % id).scan(/..../) + args
-  end
-  
-  
-  def full_filename(thumbnail = nil)
-    create_thumbnail_if_required(thumbnail, full_filename_without_creation(thumbnail))
   end
   
   def create_thumbnail_if_required(thumbnail, thumbnail_path)
