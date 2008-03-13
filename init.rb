@@ -24,3 +24,10 @@ class ActiveRecord::Base
   end
 end
 
+class MiniMagick::Image
+  def resize(*args)
+    args.push(@path) # push the path onto the end
+    run_command("mogrify", "-thumbnail", *args)
+  end
+end
+
