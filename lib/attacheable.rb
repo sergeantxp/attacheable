@@ -31,7 +31,7 @@ module Attacheable
       return nil unless id1 && id2 && path
       object = find(id1.to_i*1000 + id2.to_i)
       if path = object.full_filename_by_path(path)
-        File.read(path)
+        File.read(path) if File.exists?(path)
       end
     end
   end
@@ -56,6 +56,7 @@ module Attacheable
   
   def full_filename_by_path(path)
     thumbnail = path.gsub(%r(^#{Regexp.escape(filename.gsub(/\.([^\.]+)$/, ''))}_), '').gsub(/\.([^\.]+)$/, '')
+    return unless attachment_options[:thumbnails][thumbnail.to_sym]
     full_filename_with_creation(thumbnail)
   end
 
