@@ -15,16 +15,23 @@ class ActiveRecord::Base
   # This will enable creation on demand
   # 
   def self.has_attachment(options = {})
-    @attachment_options = options
+    #@attachment_options = options
+    define_method :attachment_options do
+      options
+    end
     
     options[:thumbnails] ||= {}
     options[:croppable_thumbnails] ||= []
   
     include(Attacheable)
+    MiniMagick::Image.class_eval {include Attacheable::MiniMagick}
+  end
+  
+  def self.validates_as_attachment
   end
 end
 
-class MiniMagick::Image
+module Attacheable::MiniMagick
   def resize(*args)
     args.push(@path) # push the path onto the end
     run_command("mogrify", "-thumbnail", *args)

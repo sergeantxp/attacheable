@@ -16,10 +16,6 @@ module Attacheable
   end
   
   module ClassMethods
-    def attachment_options
-      @attachment_options
-    end
-    
     def regenerate_thumbnails!(thumbnail = nil)
       connection.select_values("select id from #{table_name}").each do |object_id|
         object = find_by_id(object_id)
