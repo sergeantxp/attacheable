@@ -6,6 +6,15 @@ module Attacheable
     base.extend(ClassMethods)
   end
   
+  @with_creation = true
+  def self.with_creation=(value)
+    @with_creation = value
+  end
+  
+  def self.with_creation
+    @with_creation
+  end
+  
   module ClassMethods
     def attachment_options
       @attachment_options
@@ -46,7 +55,7 @@ module Attacheable
   end
   
   def full_filename(thumbnail = nil)
-    full_filename_with_creation(thumbnail)
+    Attacheable.with_creation ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
   end
   
   def full_filename_without_creation(thumbnail = nil)
