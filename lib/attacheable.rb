@@ -95,9 +95,10 @@ module Attacheable
   def create_thumbnail(thumbnail, thumbnail_path)
     return nil unless File.exists?(full_filename)
     return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
-    FileUtils.cp(full_filename, thumbnail_path)
-    image = MiniMagick::Image.new(thumbnail_path)
-    image.resize(attachment_options[:thumbnails][thumbnail.to_sym])
+    #FileUtils.cp(full_filename, thumbnail_path)
+    #image = MiniMagick::Image.new(thumbnail_path)
+    #image.resize(attachment_options[:thumbnails][thumbnail.to_sym])
+    `convert -thumbnail #{attachment_options[:thumbnails][thumbnail.to_sym]} "#{full_filename}" "#{thumbnail_path}"`
     thumbnail_path
   end
 
@@ -171,9 +172,9 @@ module Attacheable
       x, y = width, (album_y*scale_x).floor
       shift_x, shift_y = 0, (height - y)/2
     end
-    FileUtils.cp(full_filename_without_creation, thumbnail_path)
-    `mogrify -crop #{x}x#{y}+#{shift_x}+#{shift_y} #{thumbnail_path}`
-    `mogrify -geometry #{album_x}x#{album_y} #{thumbnail_path}`
+#    FileUtils.cp(full_filename_without_creation, thumbnail_path)
+    `convert -crop #{x}x#{y}+#{shift_x}+#{shift_y} "#{full_filename}" "#{thumbnail_path}"`
+    `mogrify  -geometry #{album_x}x#{album_y} "#{thumbnail_path}"`
     thumbnail_path
   end
 
