@@ -95,9 +95,6 @@ module Attacheable
   def create_thumbnail(thumbnail, thumbnail_path)
     return nil unless File.exists?(full_filename)
     return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
-    #FileUtils.cp(full_filename, thumbnail_path)
-    #image = MiniMagick::Image.new(thumbnail_path)
-    #image.resize(attachment_options[:thumbnails][thumbnail.to_sym])
     `convert -thumbnail #{attachment_options[:thumbnails][thumbnail.to_sym]} "#{full_filename}" "#{thumbnail_path}"`
     thumbnail_path
   end
@@ -133,9 +130,11 @@ module Attacheable
       @tempfile = file_data
     end
     
-    image = MiniMagick::Image.new(@tempfile.path)
-    self.width = image['width']
-    self.height = image['height']
+    output = `identify "#{@tempfile.path}"`
+    if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
+      self.width = match_data[2]
+      self.height = match_data[3]
+    end
   end
 
   def image_size
