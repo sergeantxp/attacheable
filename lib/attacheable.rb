@@ -16,6 +16,7 @@ module Attacheable
   end
   
   module ClassMethods
+
     def regenerate_thumbnails!(thumbnail = nil)
       connection.select_values("select id from #{table_name}").each do |object_id|
         object = find_by_id(object_id)
@@ -114,12 +115,17 @@ module Attacheable
   def base_path
     @base_path ||= File.join(RAILS_ROOT, 'public')
   end
-
+  
+  
+  def valid_filetype?
+    errors.add("uploaded_data", "Неправильный тип файла. Должен быть JPEG") unless @valid_filetype
+  end
+  
   def uploaded_data=(file_data)
     return nil if file_data.nil? || file_data.size == 0 
-    @save_new_attachment = true
     
-    self.content_type = file_data.content_type.to_s.strip
+
+    
     self.filename     = file_data.original_filename if respond_to?(:filename)
     if file_data.is_a?(StringIO)
       file_data.rewind
@@ -129,11 +135,22 @@ module Attacheable
     else
       @tempfile = file_data
     end
-    
     output = `identify "#{@tempfile.path}"`
     if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
-      self.width = match_data[2]
-      self.height = match_data[3]
+      if match_data[1] == "JPEG"
+        @valid_filetype = true
+        @save_new_attachment = true
+        self.content_type = "image/jpeg"
+        self.width = match_data[2]
+        self.height = match_data[3]
+      end
+    end
+    
+    unless @valid_filetype  
+      @save_new_attachment = false
+      File.unlink(@tempfile.path) rescue nil
+      @tempfile = nil
+      return false
     end
   end
 

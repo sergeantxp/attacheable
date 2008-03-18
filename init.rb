@@ -27,5 +27,6 @@ class ActiveRecord::Base
   end
   
   def self.validates_as_attachment
+    validate :valid_filetype?
   end
 end
