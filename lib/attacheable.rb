@@ -219,13 +219,22 @@ protected
   def save_to_storage
     if @save_new_attachment
       # TODO: This overwrites the file if it exists, maybe have an allow_overwrite option?
+
       FileUtils.mkdir_p(File.dirname(full_filename))
       FileUtils.cp(@tempfile.path, full_filename)
       File.chmod(0644, full_filename)
+      save_to_replicas
     end
     @save_new_attachment = false
     @tempfile = nil
     true
   end
+
+    def save_to_replicas
+        attachment_options[:replicas].each do |replica|
+            system("ssh #{replica[:user]}@#{replica[:host]} mkdir -p #{File.dirname(full_filename)}")
+            system("scp #{full_filename} #{replica[:user]}@#{replica[:host]}:#{full_filename}")
+        end if attachment_options[:replicas]
+    end
    
 end
