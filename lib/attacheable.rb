@@ -5,6 +5,8 @@ class ActiveRecord::Base
   # :thumbnails => list of thumbnails, i.e.  {:medium => "120x", :large => "800x600"}
   # :croppable_thumbnails => list of thumbnails, which must be cropped to center, i.e.:  [:large, :preview]
   # :path_prefix => path, where to store photos, i.e.: "public/system/photos"
+  # :replicas => [{:user => "user1", :host => "host1"}], list of hosts, where to clone all loaded originals
+  # :autocreate => true/false, whether to autocreate thumbnails on requesting thumbnail
   #
   # After this, add to routes:
   #  map.assets 'system/photos/*path_info', :controller => "photos", :action => "show"
@@ -31,6 +33,7 @@ class ActiveRecord::Base
     self.attachment_options = options
     
     options.with_indifferent_access
+    options[:autocreate] ||= false
     options[:thumbnails] ||= {}
     options[:thumbnails].symbolize_keys!
     options[:croppable_thumbnails] ||= []
@@ -51,15 +54,6 @@ module Attacheable
     base.after_save :save_to_storage
     base.after_destroy :remove_files
     base.extend(ClassMethods)
-  end
-
-  @with_creation = true
-  def self.with_creation=(value)
-    @with_creation = value
-  end
-
-  def self.with_creation
-    @with_creation
   end
 
   module ClassMethods
@@ -100,7 +94,7 @@ module Attacheable
   end
 
   def full_filename(thumbnail = nil)
-    Attacheable.with_creation ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
+    attachment_options[:autocreate] ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
   end
 
   def full_filename_without_creation(thumbnail = nil)
@@ -171,10 +165,7 @@ module Attacheable
 
   def uploaded_data=(file_data)
     return nil if file_data.nil? || file_data.size == 0 
-  
-
-  
-    self.filename     = file_data.original_filename if respond_to?(:filename)
+    self.filename     = file_data.original_filename
     if file_data.is_a?(StringIO)
       file_data.rewind
       @tempfile = Tempfile.new(filename)
@@ -196,7 +187,7 @@ module Attacheable
   
     unless @valid_filetype  
       @save_new_attachment = false
-      File.unlink(@tempfile.path) rescue nil
+      #File.unlink(@tempfile.path) rescue nil
       @tempfile = nil
       return false
     end

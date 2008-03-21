@@ -1,4 +1,4 @@
-require 'test_helper'
+require File.dirname(__FILE__)+'/test_helper'
 
 ActiveRecord::Base.establish_connection(:adapter => "sqlite3", :dbfile => ":memory:")
 
@@ -21,10 +21,22 @@ end
 
 class Image < ActiveRecord::Base
   has_attachment :thumbnails => {:medium => "120x", :large => "800x600", :preview => "100x100"},
-    :croppable_thumbnails => [:preview]
+    :croppable_thumbnails => %w(preview)
+  validates_as_attachment
 end
 
 class Photo < Image
+end
+
+module TestUploadExtension
+  attr_accessor :content_type
+  def original_filename
+    File.basename(path)
+  end
+  
+  def size
+    File.stat(path).size
+  end
 end
 
 class AttacheableTest < Test::Unit::TestCase
@@ -34,9 +46,62 @@ class AttacheableTest < Test::Unit::TestCase
   
   def teardown
     teardown_db
+    FileUtils.rm_rf(File.dirname(__FILE__)+"/public")
+    Image.attachment_options[:autocreate] = false
+  end
+  
+  def test_image_autoconf
+    assert_equal "public/system/images", Image.attachment_options[:path_prefix], "Should guess path prefix right"
   end
   
   def test_image_creation
-    
+    input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
+    input.extend(TestUploadExtension)
+    assert_equal "life.jpg", input.original_filename, "should look like uploaded file"
+    image = Image.new(:uploaded_data => input)
+    assert_equal "life_medium.jpg", image.thumbnail_name_for(:medium), "should generate right thumbnail filename"
+    assert image.save, "Image should be saved"
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life.jpg"), "File should be saved"
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_medium.jpg"), "Thumbnails should not be generated"
+    image.destroy
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
   end
+  
+  def test_image_with_autocreation
+    Image.attachment_options[:autocreate] = true
+    input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
+    input.extend(TestUploadExtension)
+    image = Image.new(:uploaded_data => input)
+    assert image.save, "Image should be saved"
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life.jpg"), "File should be saved"
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_medium.jpg"), "Thumbnails should not be generated"
+    assert_equal "life_medium.jpg", image.thumbnail_name_for(:medium), "should generate right thumbnail filename"
+    image.public_filename(:medium)
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_medium.jpg"), "Thumbnails should be generated on demand"
+    image.destroy
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+  end
+
+  def test_autocrop_image
+    Image.attachment_options[:autocreate] = true
+    input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
+    input.extend(TestUploadExtension)
+    image = Image.new(:uploaded_data => input)
+    assert image.save, "Image should be saved"
+    image.public_filename(:preview)
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_preview.jpg"), "Thumbnails should be generated on demand"
+    identify = `identify "#{File.dirname(__FILE__)+"/public/system/images/0000/0001/life_preview.jpg"}"`
+    assert Regexp.new(" JPEG 100x100 ").match(identify), "Image should be cropped to format"
+    image.destroy
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+  end
+  
+  def test_image_with_wrong_type
+    input = File.open(File.dirname(__FILE__)+"/fixtures/wrong_type")
+    input.extend(TestUploadExtension)
+    image = Image.new(:uploaded_data => input)
+    assert !image.save, "Image should not be saved"
+    assert image.errors.on(:uploaded_data).size > 0, "Uploaded data is of wrong type"
+  end
+
 end
