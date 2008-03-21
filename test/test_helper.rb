@@ -3,6 +3,7 @@ require 'rubygems'
 require 'active_support'
 require 'active_record'
 require 'action_pack'
+$KCODE = 'u'
 
 $:.unshift File.join(File.dirname(__FILE__), '../lib')
 if defined?(RAILS_ROOT)

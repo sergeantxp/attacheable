@@ -9,6 +9,7 @@ def setup_db
       t.string :content_type
       t.integer :width
       t.integer :height
+      t.string :type
     end
   end
 end
@@ -48,6 +49,7 @@ class AttacheableTest < Test::Unit::TestCase
     teardown_db
     FileUtils.rm_rf(File.dirname(__FILE__)+"/public")
     Image.attachment_options[:autocreate] = false
+    Image.attachment_options[:valid_filetypes] = :image
   end
   
   def test_image_autoconf
@@ -104,4 +106,25 @@ class AttacheableTest < Test::Unit::TestCase
     assert image.errors.on(:uploaded_data).size > 0, "Uploaded data is of wrong type"
   end
 
+  def test_with_sti
+    input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
+    input.extend(TestUploadExtension)
+    image = Photo.new(:uploaded_data => input)
+    assert image.save, "Image should be saved"
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life.jpg"), "File should be uploaded as for Image"
+    image.destroy
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+  end
+  
+  def test_save_raw_binary
+    Image.attachment_options[:valid_filetypes] = :all
+    input = File.open(File.dirname(__FILE__)+"/fixtures/wrong_type")
+    input.extend(TestUploadExtension)
+    image = Image.new(:uploaded_data => input)
+    assert image.save, "Image should be saved"
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/wrong_type"), "File should be uploaded"
+    assert !image.full_filename_with_creation(:preview)
+    image.destroy
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+  end
 end

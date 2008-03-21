@@ -39,6 +39,7 @@ class ActiveRecord::Base
     options[:croppable_thumbnails] ||= []
     options[:croppable_thumbnails] = options[:croppable_thumbnails].map(&:to_sym)
     options[:path_prefix] ||= "public/system/#{table_name}"
+    options[:valid_filetypes] ||= :image
     include(Attacheable)
   end
   
@@ -127,6 +128,7 @@ module Attacheable
   def create_thumbnail_if_required(thumbnail, thumbnail_path)
     return thumbnail_path unless thumbnail
     return thumbnail_path if File.exists?(thumbnail_path)
+    return unless /image\//.match(content_type)
     if attachment_options[:croppable_thumbnails].include?(thumbnail.to_sym)
       crop_and_thumbnail(thumbnail, thumbnail_path)
     else
@@ -174,18 +176,25 @@ module Attacheable
     else
       @tempfile = file_data
     end
-    output = `identify "#{@tempfile.path}"`
-    if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
-      if %w(JPEG GIF PNG).include?(match_data[1])
-        @valid_filetype = true
-        @save_new_attachment = true
-        self.content_type = "image/#{match_data[1].downcase}" if(respond_to?(:content_type=))
-        self.width = match_data[2] if(respond_to?(:width=))
-        self.height = match_data[3] if(respond_to?(:height=))
+    if attachment_options[:valid_filetypes] == :all
+      @valid_filetype = true
+      @save_new_attachment = true
+      self.content_type = file_data.content_type if file_data.respond_to?(:content_type)
+    else
+      output = `identify "#{@tempfile.path}"`
+      if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
+        if %w(JPEG GIF PNG).include?(match_data[1])
+          @valid_filetype = true
+          @save_new_attachment = true
+          self.content_type = "image/#{match_data[1].downcase}"
+          self.width = match_data[2] if(respond_to?(:width=))
+          self.height = match_data[3] if(respond_to?(:height=))
+        end
       end
     end
+    
   
-    unless @valid_filetype  
+    unless @valid_filetype
       @save_new_attachment = false
       #File.unlink(@tempfile.path) rescue nil
       @tempfile = nil
