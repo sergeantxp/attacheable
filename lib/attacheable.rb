@@ -137,10 +137,10 @@ module Attacheable
     end
     output = `identify "#{@tempfile.path}"`
     if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
-      if match_data[1] == "JPEG"
+      if %w(JPEG GIF PNG).include?(match_data[1])
         @valid_filetype = true
         @save_new_attachment = true
-        self.content_type = "image/jpeg"
+        self.content_type = "image/#{match_data[1].downcase}"
         self.width = match_data[2]
         self.height = match_data[3]
       end
