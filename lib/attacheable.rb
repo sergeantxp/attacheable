@@ -1,3 +1,50 @@
+class ActiveRecord::Base
+  #
+  # In model write has_attachment (conflicts with acts_as_attachment) with options:
+  # 
+  # :thumbnails => list of thumbnails, i.e.  {:medium => "120x", :large => "800x600"}
+  # :croppable_thumbnails => list of thumbnails, which must be cropped to center, i.e.:  [:large, :preview]
+  # :path_prefix => path, where to store photos, i.e.: "public/system/photos"
+  #
+  # After this, add to routes:
+  #  map.assets 'system/photos/*path_info', :controller => "photos", :action => "show"
+  # and add to PhotosController:
+  # def show
+  #   photo, data = Photo.data_by_path_info(params[:path_info])
+  #   render :text => data, :content_type => photo && photo.content_type
+  # end
+  # This will enable creation on demand
+  #
+  # You can also add 
+  #  uri "/system/photos/", :handler => Attacheable::PhotoHandler.new("/system/photos"), :in_front => true 
+  # to any mongrel scripts for nonblocking image creation
+  # 
+  # Table for this plugin should have fields:
+  #       filename : string
+  #   content_type : string  (optional)
+  #          width : integer (optional)
+  #         heigth : integer (optional)
+  #
+  #
+  def self.has_attachment(options = {})
+    class_inheritable_accessor :attachment_options
+    self.attachment_options = options
+    
+    options.with_indifferent_access
+    options[:thumbnails] ||= {}
+    options[:thumbnails].symbolize_keys!
+    options[:croppable_thumbnails] ||= []
+    options[:croppable_thumbnails] = options[:croppable_thumbnails].map(&:to_sym)
+    options[:path_prefix] ||= "public/system/#{table_name}"
+    include(Attacheable)
+  end
+  
+  def self.validates_as_attachment
+    validate :valid_filetype?
+  end
+end
+
+
 module Attacheable
   def self.included(base) #:nodoc:
     base.before_update :rename_file
@@ -5,16 +52,16 @@ module Attacheable
     base.after_destroy :remove_files
     base.extend(ClassMethods)
   end
-  
+
   @with_creation = true
   def self.with_creation=(value)
     @with_creation = value
   end
-  
+
   def self.with_creation
     @with_creation
   end
-  
+
   module ClassMethods
 
     def regenerate_thumbnails!(thumbnail = nil)
@@ -31,35 +78,36 @@ module Attacheable
         end
       end
     end
-    
+  
     def data_by_path_info(path_info)
       id1, id2, path = path_info
-      return nil unless id1 && id2 && path
+      return [nil, nil] unless id1 && id2 && path
       object = find(id1.to_i*1000 + id2.to_i)
       if path = object.full_filename_by_path(path)
-        File.read(path) if File.exists?(path)
+        [object, File.read(path)] if File.exists?(path)
       end
+      [nil, nil]
     end
   end
-  
+
   def attachment_options
     self.class.attachment_options
   end
 
-  
+
   def full_filename_with_creation(thumbnail = nil)
     create_thumbnail_if_required(thumbnail, full_filename_without_creation(thumbnail))
   end
-  
+
   def full_filename(thumbnail = nil)
     Attacheable.with_creation ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
   end
-  
+
   def full_filename_without_creation(thumbnail = nil)
     file_system_path = attachment_options[:path_prefix]
     File.join(RAILS_ROOT, file_system_path, *partitioned_path(thumbnail_name_for(thumbnail)))
   end
-  
+
   def full_filename_by_path(path)
     thumbnail = path.gsub(%r(^#{Regexp.escape(filename.gsub(/\.([^\.]+)$/, ''))}_), '').gsub(/\.([^\.]+)$/, '')
     return unless attachment_options[:thumbnails][thumbnail.to_sym]
@@ -81,7 +129,7 @@ module Attacheable
   def partitioned_path(*args)
     ("%08d" % id).scan(/..../) + args
   end
-  
+
   def create_thumbnail_if_required(thumbnail, thumbnail_path)
     return thumbnail_path unless thumbnail
     return thumbnail_path if File.exists?(thumbnail_path)
@@ -92,7 +140,7 @@ module Attacheable
     end
     thumbnail_path
   end
-  
+
   def create_thumbnail(thumbnail, thumbnail_path)
     return nil unless File.exists?(full_filename)
     return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
@@ -115,17 +163,17 @@ module Attacheable
   def base_path
     @base_path ||= File.join(RAILS_ROOT, 'public')
   end
-  
-  
+
+
   def valid_filetype?
     errors.add("uploaded_data", "Неправильный тип файла. Должен быть JPEG") unless @valid_filetype
   end
-  
+
   def uploaded_data=(file_data)
     return nil if file_data.nil? || file_data.size == 0 
-    
+  
 
-    
+  
     self.filename     = file_data.original_filename if respond_to?(:filename)
     if file_data.is_a?(StringIO)
       file_data.rewind
@@ -140,12 +188,12 @@ module Attacheable
       if %w(JPEG GIF PNG).include?(match_data[1])
         @valid_filetype = true
         @save_new_attachment = true
-        self.content_type = "image/#{match_data[1].downcase}"
-        self.width = match_data[2]
-        self.height = match_data[3]
+        self.content_type = "image/#{match_data[1].downcase}" if(respond_to?(:content_type=))
+        self.width = match_data[2] if(respond_to?(:width=))
+        self.height = match_data[3] if(respond_to?(:height=))
       end
     end
-    
+  
     unless @valid_filetype  
       @save_new_attachment = false
       File.unlink(@tempfile.path) rescue nil
@@ -214,12 +262,10 @@ protected
     @old_filename =  nil
     true
   end
-  
+
   # Saves the file to the file system
   def save_to_storage
     if @save_new_attachment
-      # TODO: This overwrites the file if it exists, maybe have an allow_overwrite option?
-
       FileUtils.mkdir_p(File.dirname(full_filename))
       FileUtils.cp(@tempfile.path, full_filename)
       File.chmod(0644, full_filename)
@@ -230,11 +276,11 @@ protected
     true
   end
 
-    def save_to_replicas
-        attachment_options[:replicas].each do |replica|
-            system("ssh #{replica[:user]}@#{replica[:host]} mkdir -p #{File.dirname(full_filename)}")
-            system("scp #{full_filename} #{replica[:user]}@#{replica[:host]}:#{full_filename}")
-        end if attachment_options[:replicas]
-    end
-   
+  def save_to_replicas
+    attachment_options[:replicas].each do |replica|
+      system("ssh #{replica[:user]}@#{replica[:host]} mkdir -p \"#{File.dirname(full_filename)}\"")
+      system("scp \"#{full_filename}\" \"#{replica[:user]}@#{replica[:host]}:#{full_filename}\"")
+    end if attachment_options[:replicas]
+  end
+ 
 end
