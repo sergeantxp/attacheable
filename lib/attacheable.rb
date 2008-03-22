@@ -35,11 +35,11 @@ class ActiveRecord::Base
     options.with_indifferent_access
     options[:autocreate] ||= false
     options[:thumbnails] ||= {}
-    options[:thumbnails].symbolize_keys!
+    options[:thumbnails].symbolize_keys!.with_indifferent_access
     options[:croppable_thumbnails] ||= []
     options[:croppable_thumbnails] = options[:croppable_thumbnails].map(&:to_sym)
     options[:path_prefix] ||= "public/system/#{table_name}"
-    options[:valid_filetypes] ||= :image
+    options[:valid_filetypes] ||= %w(jpeg gif png psd)
     include(Attacheable)
   end
   
@@ -79,9 +79,9 @@ module Attacheable
       return [nil, nil] unless id1 && id2 && path
       object = find(id1.to_i*1000 + id2.to_i)
       if path = object.full_filename_by_path(path)
-        [object, File.read(path)] if File.exists?(path)
+        return [object, File.read(path)] if File.exists?(path)
       end
-      [nil, nil]
+      [object, nil]
     end
   end
 
@@ -90,12 +90,12 @@ module Attacheable
   end
 
 
-  def full_filename_with_creation(thumbnail = nil)
-    create_thumbnail_if_required(thumbnail, full_filename_without_creation(thumbnail))
-  end
-
   def full_filename(thumbnail = nil)
     attachment_options[:autocreate] ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
+  end
+
+  def full_filename_with_creation(thumbnail = nil)
+    create_thumbnail_if_required(thumbnail)
   end
 
   def full_filename_without_creation(thumbnail = nil)
@@ -103,9 +103,27 @@ module Attacheable
     File.join(RAILS_ROOT, file_system_path, *partitioned_path(thumbnail_name_for(thumbnail)))
   end
 
+  def thumbnail_name_for(thumbnail = nil)
+    return filename if thumbnail.blank?
+    ext = nil
+    basename = filename.gsub /\.\w+$/ do |s|
+      ext = s; ''
+    end
+    "#{basename}_#{thumbnail}#{ext}"
+  end
+
+
+  def base_path
+    @base_path ||= File.join(RAILS_ROOT, 'public')
+  end
+  
   def full_filename_by_path(path)
-    thumbnail = path.gsub(%r(^#{Regexp.escape(filename.gsub(/\.([^\.]+)$/, ''))}_), '').gsub(/\.([^\.]+)$/, '')
-    return unless attachment_options[:thumbnails][thumbnail.to_sym]
+    ext = nil
+    basename = filename.gsub /\.[^\.]+$/ do |s|
+      ext = s; ''
+    end
+    thumbnail = path.gsub(%r(^#{Regexp.escape(basename)}_), '').gsub(%r(#{Regexp.escape(ext)}$), '').to_sym
+    return unless attachment_options[:thumbnails][thumbnail]
     full_filename_with_creation(thumbnail)
   end
 
@@ -125,7 +143,8 @@ module Attacheable
     ("%08d" % id).scan(/..../) + args
   end
 
-  def create_thumbnail_if_required(thumbnail, thumbnail_path)
+  def create_thumbnail_if_required(thumbnail)
+    thumbnail_path = full_filename_without_creation(thumbnail)
     return thumbnail_path unless thumbnail
     return thumbnail_path if File.exists?(thumbnail_path)
     return unless /image\//.match(content_type)
@@ -146,23 +165,9 @@ module Attacheable
 
 
 
-  def thumbnail_name_for(thumbnail = nil)
-    return filename if thumbnail.blank?
-    ext = nil
-    basename = filename.gsub /\.\w+$/ do |s|
-      ext = s; ''
-    end
-    "#{basename}_#{thumbnail}#{ext}"
-  end
-
-
-  def base_path
-    @base_path ||= File.join(RAILS_ROOT, 'public')
-  end
-
 
   def valid_filetype?
-    errors.add("uploaded_data", "Неправильный тип файла. Должен быть JPEG") unless @valid_filetype
+    errors.add("uploaded_data", "Неправильный тип файла. Должен быть один из: #{attachment_options[:valid_filetypes].join(", ")}") unless @valid_filetype
   end
 
   def uploaded_data=(file_data)
@@ -181,12 +186,13 @@ module Attacheable
       @save_new_attachment = true
       self.content_type = file_data.content_type if file_data.respond_to?(:content_type)
     else
-      output = `identify "#{@tempfile.path}"`
+      output = `identify "#{@tempfile.path}" 2>/dev/null`
       if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
-        if %w(JPEG GIF PNG).include?(match_data[1])
+        file_type = match_data[1].to_s.downcase
+        if attachment_options[:valid_filetypes].include?(file_type)
           @valid_filetype = true
           @save_new_attachment = true
-          self.content_type = "image/#{match_data[1].downcase}"
+          self.content_type = "image/#{file_type}"
           self.width = match_data[2] if(respond_to?(:width=))
           self.height = match_data[3] if(respond_to?(:height=))
         end
