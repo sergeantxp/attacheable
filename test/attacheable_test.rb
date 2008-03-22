@@ -64,6 +64,8 @@ class AttacheableTest < Test::Unit::TestCase
     image = Image.new(:uploaded_data => input)
     assert_equal "life_medium.jpg", image.send(:thumbnail_name_for, :medium), "should generate right thumbnail filename"
     assert image.save, "Image should be saved"
+    assert_equal "life", image.attachment_basename
+    assert_equal ".jpg", image.attachment_extname
     assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life.jpg"), "File should be saved"
     assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_medium.jpg"), "Thumbnails should not be generated"
     image.destroy

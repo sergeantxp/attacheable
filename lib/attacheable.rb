@@ -1,3 +1,5 @@
+require File.dirname(__FILE__)+"/attacheable/file_naming"
+require File.dirname(__FILE__)+"/attacheable/uploading"
 class ActiveRecord::Base
   #
   # In model write has_attachment (conflicts with acts_as_attachment) with options:
@@ -53,6 +55,9 @@ end
 
 
 module Attacheable
+  include Attacheable::Uploading
+  include Attacheable::FileNaming
+
   def self.included(base) #:nodoc:
     base.before_update :rename_file
     base.after_save :save_to_storage
@@ -106,39 +111,11 @@ module Attacheable
     attachment_options[:autocreate] ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
   end
 
-  protected
-  def full_filename_with_creation(thumbnail = nil) #:nodoc:
-    create_thumbnail_if_required(thumbnail)
-  end
-
-  def full_filename_without_creation(thumbnail = nil) #:nodoc:
-    file_system_path = attachment_options[:path_prefix]
-    File.join(RAILS_ROOT, file_system_path, *partitioned_path(thumbnail_name_for(thumbnail)))
-  end
-
-  def thumbnail_name_for(thumbnail = nil) #:nodoc:
-    return filename if thumbnail.blank?
-    ext = nil
-    basename = filename.gsub /\.\w+$/ do |s|
-      ext = s; ''
-    end
-    "#{basename}_#{thumbnail}#{ext}"
-  end
-
-
-  def base_path #:nodoc:
-    @base_path ||= File.join(RAILS_ROOT, 'public')
-  end
-  
-  public
   def full_filename_by_path(path) #:nodoc:
-    ext = nil
-    basename = filename.gsub /\.[^\.]+$/ do |s|
-      ext = s; ''
-    end
-    thumbnail = path.gsub(%r(^#{Regexp.escape(basename)}_), '').gsub(%r(#{Regexp.escape(ext)}$), '').to_sym
-    return unless attachment_options[:thumbnails][thumbnail]
-    full_filename_with_creation(thumbnail)
+    thumbnail = path.gsub(%r((^#{Regexp.escape(attachment_basename)}_)(\w+)(#{Regexp.escape(attachment_extname)})$), '\2')
+    return unless thumbnail
+    return unless attachment_options[:thumbnails][thumbnail.to_sym]
+    full_filename_with_creation(thumbnail.to_sym)
   end
 
   # Gets the public path to the file, visible to browser
@@ -149,9 +126,6 @@ module Attacheable
   end
 
   protected
-  def public_filename_without_creation(thumbnail = nil)
-    full_filename_without_creation(thumbnail).gsub %r(^#{Regexp.escape(base_path)}), ''
-  end
 
   # overrwrite this to do your own app-specific partitioning. 
   # you can thank Jamis Buck for this: http://www.37signals.com/svn/archives2/id_partitioning.php
@@ -189,43 +163,13 @@ module Attacheable
   # Main method, that accepts uploaded data
   #
   def uploaded_data=(file_data)
-    return nil if file_data.nil? || file_data.size == 0 
-    self.filename     = file_data.original_filename
-    if file_data.is_a?(StringIO)
-      file_data.rewind
-      @tempfile = Tempfile.new(filename)
-      @tempfile.write(file_data.read)
-      @tempfile.close
-    else
-      @tempfile = file_data
-    end
-    if attachment_options[:valid_filetypes] == :all
-      @valid_filetype = true
-      @save_new_attachment = true
-      self.content_type = file_data.content_type if file_data.respond_to?(:content_type)
-    else
-      output = `identify "#{@tempfile.path}" 2>/dev/null`
-      if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
-        file_type = match_data[1].to_s.downcase
-        if attachment_options[:valid_filetypes].include?(file_type)
-          @valid_filetype = true
-          @save_new_attachment = true
-          self.content_type = "image/#{file_type}"
-          self.width = match_data[2] if(respond_to?(:width=))
-          self.height = match_data[3] if(respond_to?(:height=))
-        end
-      end
-    end
-    
-  
-    unless @valid_filetype
-      @save_new_attachment = false
-      #File.unlink(@tempfile.path) rescue nil
-      @tempfile = nil
-      return false
+    prepare_uploaded_file(file_data)
+    file_type = identify_uploaded_file_type
+    if accepts_file_type_for_upload?(file_type)
+      handle_uploaded_file
     end
   end
-
+  
   def image_size
     [width.to_s, height.to_s] * 'x'
   end
@@ -236,16 +180,6 @@ module Attacheable
   end
 
   protected
-  def sanitize_filename(filename)
-    returning filename.strip do |name|
-      # NOTE: File.basename doesn't work right with Windows paths on Unix
-      # get only the filename, not the whole path
-      name.gsub! /^.*(\\|\/)/, ''
-
-      # Finally, replace all non alphanumeric, underscore or periods with underscore
-      name.gsub! /[^\w\.\-]/, '_'
-    end
-  end
 
 
   def crop_and_thumbnail(thumbnail, thumbnail_path)
@@ -283,26 +217,6 @@ module Attacheable
     end
     @old_filename =  nil
     true
-  end
-
-  # Saves the file to the file system
-  def save_to_storage
-    if @save_new_attachment
-      FileUtils.mkdir_p(File.dirname(full_filename))
-      FileUtils.cp(@tempfile.path, full_filename)
-      File.chmod(0644, full_filename)
-      save_to_replicas
-    end
-    @save_new_attachment = false
-    @tempfile = nil
-    true
-  end
-
-  def save_to_replicas
-    attachment_options[:replicas].each do |replica|
-      system("ssh #{replica[:user]}@#{replica[:host]} mkdir -p \"#{File.dirname(full_filename)}\"")
-      system("scp \"#{full_filename}\" \"#{replica[:user]}@#{replica[:host]}:#{full_filename}\"")
-    end if attachment_options[:replicas]
   end
  
 end
