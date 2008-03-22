@@ -43,6 +43,9 @@ class ActiveRecord::Base
     include(Attacheable)
   end
   
+  #
+  # Currently it will check valid filetype (unless option valid_filetypes set to :all)
+  #
   def self.validates_as_attachment
     validate :valid_filetype?
   end
@@ -59,6 +62,9 @@ module Attacheable
 
   module ClassMethods
 
+    #
+    # You can delete all thumbnails or with selected type
+    #
     def regenerate_thumbnails!(thumbnail = nil)
       connection.select_values("select id from #{table_name}").each do |object_id|
         object = find_by_id(object_id)
@@ -74,6 +80,9 @@ module Attacheable
       end
     end
   
+    #
+    # It is designed to read  params[:path_info], or splitted PATH_INFO in mongrel handler
+    # It assumes, that path_info is of the following format ["0000", "0001", "file_medium.jpg"]
     def data_by_path_info(path_info)
       id1, id2, path = path_info
       return [nil, nil] unless id1 && id2 && path
@@ -85,25 +94,29 @@ module Attacheable
     end
   end
 
-  def attachment_options
+  def attachment_options #:nodoc:
     self.class.attachment_options
   end
 
-
+  #
+  # Returns real path to original file if thumbnail is nil or path with thumbnail part inserted
+  # If options[:autocreate] is set to true, this method will autogenerate thumbnail
+  #
   def full_filename(thumbnail = nil)
     attachment_options[:autocreate] ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
   end
 
-  def full_filename_with_creation(thumbnail = nil)
+  protected
+  def full_filename_with_creation(thumbnail = nil) #:nodoc:
     create_thumbnail_if_required(thumbnail)
   end
 
-  def full_filename_without_creation(thumbnail = nil)
+  def full_filename_without_creation(thumbnail = nil) #:nodoc:
     file_system_path = attachment_options[:path_prefix]
     File.join(RAILS_ROOT, file_system_path, *partitioned_path(thumbnail_name_for(thumbnail)))
   end
 
-  def thumbnail_name_for(thumbnail = nil)
+  def thumbnail_name_for(thumbnail = nil) #:nodoc:
     return filename if thumbnail.blank?
     ext = nil
     basename = filename.gsub /\.\w+$/ do |s|
@@ -113,11 +126,12 @@ module Attacheable
   end
 
 
-  def base_path
+  def base_path #:nodoc:
     @base_path ||= File.join(RAILS_ROOT, 'public')
   end
   
-  def full_filename_by_path(path)
+  public
+  def full_filename_by_path(path) #:nodoc:
     ext = nil
     basename = filename.gsub /\.[^\.]+$/ do |s|
       ext = s; ''
@@ -127,12 +141,14 @@ module Attacheable
     full_filename_with_creation(thumbnail)
   end
 
-  # Gets the public path to the file
+  # Gets the public path to the file, visible to browser
   # The optional thumbnail argument will output the thumbnail's filename.
+  # If options[:autocreate] is set to true, this method will autogenerate thumbnail
   def public_filename(thumbnail = nil)
     full_filename(thumbnail).gsub %r(^#{Regexp.escape(base_path)}), ''
   end
 
+  protected
   def public_filename_without_creation(thumbnail = nil)
     full_filename_without_creation(thumbnail).gsub %r(^#{Regexp.escape(base_path)}), ''
   end
@@ -164,12 +180,14 @@ module Attacheable
   end
 
 
+  public
 
-
-  def valid_filetype?
+  def valid_filetype? #:nodoc:
     errors.add("uploaded_data", "Неправильный тип файла. Должен быть один из: #{attachment_options[:valid_filetypes].join(", ")}") unless @valid_filetype
   end
 
+  # Main method, that accepts uploaded data
+  #
   def uploaded_data=(file_data)
     return nil if file_data.nil? || file_data.size == 0 
     self.filename     = file_data.original_filename
@@ -212,7 +230,12 @@ module Attacheable
     [width.to_s, height.to_s] * 'x'
   end
 
+  def filename=(value)
+    @old_filename = full_filename unless filename.nil? || @old_filename
+    write_attribute :filename, sanitize_filename(value)
+  end
 
+  protected
   def sanitize_filename(filename)
     returning filename.strip do |name|
       # NOTE: File.basename doesn't work right with Windows paths on Unix
@@ -222,12 +245,6 @@ module Attacheable
       # Finally, replace all non alphanumeric, underscore or periods with underscore
       name.gsub! /[^\w\.\-]/, '_'
     end
-  end
-
-
-  def filename=(value)
-    @old_filename = full_filename unless filename.nil? || @old_filename
-    write_attribute :filename, sanitize_filename(value)
   end
 
 
@@ -248,7 +265,6 @@ module Attacheable
     thumbnail_path
   end
 
-protected
   # Destroys the file.  Called in the after_destroy callback
   def remove_files
     FileUtils.rm_rf(File.dirname(full_filename_without_creation))
