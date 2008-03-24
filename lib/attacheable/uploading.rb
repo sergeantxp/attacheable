@@ -16,7 +16,7 @@ module Attacheable
     end
     
     def identify_uploaded_file_type
-      output = `identify "#{@tempfile.path}" 2>/dev/null`
+      output = `identify "#{@tempfile.path}"`
       if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
         file_type = match_data[1].to_s.downcase
         self.content_type = "image/#{file_type}"
