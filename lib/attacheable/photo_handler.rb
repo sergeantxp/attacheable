@@ -3,11 +3,14 @@ module Attacheable
     def initialize(prefix, options)
       @prefix = prefix
       @class_name = options[:class_name]
-      puts "initialized with prefix: #{prefix}"
     end
 
     def logger
       ActiveRecord::Base.logger
+    end
+    
+    def klass
+      @klass ||= @class_name.constantize
     end
 
     def process(request, response)
@@ -20,7 +23,7 @@ module Attacheable
       end
 
       start_time = Time.now
-      photo, data = @class_name.constantize.data_by_path_info(request.params["PATH_INFO"].split("/"))
+      photo, data = klass.data_by_path_info(request.params["PATH_INFO"].split("/"))
       if photo
         response.start(200) do |headers, out|
           headers["Content-Type"] = photo.content_type
