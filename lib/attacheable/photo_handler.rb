@@ -1,7 +1,8 @@
 module Attacheable
   class PhotoHandler < Mongrel::HttpHandler
-    def initialize(prefix = nil)
+    def initialize(prefix, options)
       @prefix = prefix
+      @class_name = options[:class_name]
       puts "initialized with prefix: #{prefix}"
     end
 
@@ -19,7 +20,7 @@ module Attacheable
       end
 
       start_time = Time.now
-      photo, data = Photo.data_by_path_info(request.params["PATH_INFO"].split("/"))
+      photo, data = @class_name.constantize.data_by_path_info(request.params["PATH_INFO"].split("/"))
       if photo
         response.start(200) do |headers, out|
           headers["Content-Type"] = photo.content_type
