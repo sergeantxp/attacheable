@@ -152,11 +152,13 @@ class AttacheableTest < Test::Unit::TestCase
     image = Image.new(:uploaded_data => nil)
     assert image.save, "Image should be saved with empty file"
     assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000"), "nothing should be created"
+    assert image.destroy, "should be destroyable"
   end
-  
+
   def test_string_upload
     image = Image.new(:uploaded_data => "life.jpg")
     assert image.save, "Image should be saved with empty file"
     assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000"), "nothing should be created"
+    assert image.destroy, "should be destroyable"
   end
 end

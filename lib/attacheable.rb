@@ -201,6 +201,7 @@ module Attacheable
 
   # Destroys the file.  Called in the after_destroy callback
   def remove_files
+    return unless filename
     FileUtils.rm_rf(File.dirname(full_filename_without_creation))
   rescue
     logger.info "Exception destroying  #{full_filename.inspect}: [#{$!.class.name}] #{$1.to_s}"
