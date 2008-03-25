@@ -1,8 +1,10 @@
 module Attacheable
   module Uploading
     def prepare_uploaded_file(file_data)
-      return nil if file_data.nil? || file_data.size == 0 
+      return nil if file_data.nil? || !file_data.respond_to?(:size) || !file_data.respond_to?(:original_filename) ||
+        file_data.size == 0 
       self.filename     = file_data.original_filename
+      self.size = file_data.size if respond_to?(:size)
       if file_data.is_a?(StringIO)
         file_data.rewind
         @tempfile = Tempfile.new(filename)
@@ -11,11 +13,12 @@ module Attacheable
       else
         @tempfile = file_data
       end
-      @save_new_attachment = false
+      @save_new_attachment = true
       @valid_filetype = false
     end
     
     def identify_uploaded_file_type
+      return unless @tempfile
       output = `identify "#{@tempfile.path}"`
       if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
         file_type = match_data[1].to_s.downcase
@@ -29,6 +32,7 @@ module Attacheable
     end
     
     def accepts_file_type_for_upload?(file_type)
+      return false unless @tempfile
       return true if attachment_options[:valid_filetypes] == :all
       return true if attachment_options[:valid_filetypes].include?(file_type)
     end
