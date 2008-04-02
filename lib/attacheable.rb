@@ -73,7 +73,7 @@ module Attacheable
     def regenerate_thumbnails!(thumbnail = nil)
       connection.select_values("select id from #{table_name}").each do |object_id|
         object = find_by_id(object_id)
-        if object
+        if object && object.filename
           if thumbnail
             FileUtils.rm_f(object.full_filename_without_creation(thumbnail))
           else
