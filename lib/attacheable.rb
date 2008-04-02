@@ -108,10 +108,12 @@ module Attacheable
   # If options[:autocreate] is set to true, this method will autogenerate thumbnail
   #
   def full_filename(thumbnail = nil)
+    return "" if filename.blank?
     attachment_options[:autocreate] ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
   end
 
   def full_filename_by_path(path) #:nodoc:
+    return if filename.blank?
     thumbnail = path.gsub(%r((^#{Regexp.escape(attachment_basename)}_)(\w+)(#{Regexp.escape(attachment_extname)})$), '\2')
     return unless thumbnail
     return unless attachment_options[:thumbnails][thumbnail.to_sym]
@@ -122,6 +124,7 @@ module Attacheable
   # The optional thumbnail argument will output the thumbnail's filename.
   # If options[:autocreate] is set to true, this method will autogenerate thumbnail
   def public_filename(thumbnail = nil)
+    return "" if filename.blank?
     full_filename(thumbnail).gsub %r(^#{Regexp.escape(base_path)}), ''
   end
 
