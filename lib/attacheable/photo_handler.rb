@@ -10,7 +10,7 @@ module Attacheable
     end
     
     def klass
-      @klass ||= @class_name.constantize
+      @class_name.constantize
     end
 
     def process(request, response)
