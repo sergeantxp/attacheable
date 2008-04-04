@@ -2,10 +2,9 @@ module Attacheable
   module Uploading
     def prepare_uploaded_file(file_data)
       return prepare_merb_uploaded_file(file_data) if file_data.is_a?(Hash) && file_data["content_type"] && file_data["tempfile"]
-      return nil if file_data.nil? || !file_data.respond_to?(:size) || !file_data.respond_to?(:original_filename) ||
-        file_data.size == 0 
-      self.filename     = file_data.original_filename
-      self.size = file_data.size if respond_to?(:size=)
+      return nil if file_data.nil? || !file_data.respond_to?(:original_filename) || !respond_to?(:filename=)
+      
+      self.filename = file_data.original_filename
       if file_data.is_a?(StringIO)
         file_data.rewind
         @tempfile = Tempfile.new(filename)
@@ -13,6 +12,9 @@ module Attacheable
         @tempfile.close
       else
         @tempfile = file_data
+      end
+      if respond_to?(:size=)
+        self.size = file_data.respond_to?(:size) ? file_data.size : @tempfile.respond_to?(:size) ? @tempfile.size : File.size(@tempfile.path)
       end
       @save_new_attachment = true
       @valid_filetype = false
