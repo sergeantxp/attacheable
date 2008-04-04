@@ -193,15 +193,18 @@ module Attacheable
 
 
   def crop_and_thumbnail(thumbnail, thumbnail_path)
+    if !respond_to?(:width) || !respond_to?(:height)
+      file_type, width, height = identify_file_type(full_filename)
+    end
     album_x, album_y = attachment_options[:thumbnails][thumbnail.to_sym].split("x").map &:to_i
     scale_x = width.to_f / album_x
     scale_y = height.to_f / album_y
     if scale_x > scale_y
       x, y = (album_x*scale_y).floor, height
-      shift_x, shift_y = (width-x)/2, 0
+      shift_x, shift_y = (width.to_i - x)/2, 0
     else
       x, y = width, (album_y*scale_x).floor
-      shift_x, shift_y = 0, (height - y)/2
+      shift_x, shift_y = 0, (height.to_i - y)/2
     end
 #    FileUtils.cp(full_filename_without_creation, thumbnail_path)
     `convert -crop #{x}x#{y}+#{shift_x}+#{shift_y} "#{full_filename}" "#{thumbnail_path}"`
