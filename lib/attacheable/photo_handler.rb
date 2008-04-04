@@ -14,10 +14,10 @@ module Attacheable
     end
 
     def process(request, response)
-      if File.exists?(RAILS_ROOT+"/public#{@prefix}/#{request.params["PATH_INFO"]}")
+      if File.exists?(Attacheable.root+"/public#{@prefix}/#{request.params["PATH_INFO"]}")
         response.start(200) do |headers, out|
           headers["Content-Type"] = "image/jpeg"
-          out.write(File.read(RAILS_ROOT+"/public#{@prefix}/#{request.params["PATH_INFO"]}"))
+          out.write(File.read(Attacheable.root+"/public#{@prefix}/#{request.params["PATH_INFO"]}"))
         end
         return
       end

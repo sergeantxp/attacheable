@@ -64,6 +64,13 @@ module Attacheable
     base.after_destroy :remove_files
     base.extend(ClassMethods)
   end
+  
+  
+  def self.root
+    return RAILS_ROOT if defined?(RAILS_ROOT)
+    return Merb.root if defined?(Merb)
+    return File.dirname(__FILE__)+"/../.."
+  end
 
   module ClassMethods
 
