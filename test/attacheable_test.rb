@@ -8,8 +8,8 @@ def setup_db
     create_table :images do |t|
       t.string :filename
       t.string :content_type
-      t.integer :width
-      t.integer :height
+      #t.integer :width
+      #t.integer :height
       t.string :type
     end
   end
