@@ -6,7 +6,7 @@ module Attacheable
 
     def full_filename_without_creation(thumbnail = nil) #:nodoc:
       file_system_path = attachment_options[:path_prefix]
-      File.join(RAILS_ROOT, file_system_path, *partitioned_path(thumbnail_name_for(thumbnail)))
+      File.join(Attacheable.root, file_system_path, *partitioned_path(thumbnail_name_for(thumbnail)))
     end
 
     def thumbnail_name_for(thumbnail = nil) #:nodoc:
@@ -23,7 +23,7 @@ module Attacheable
     end
 
     def base_path #:nodoc:
-      @base_path ||= File.join(RAILS_ROOT, 'public')
+      @base_path ||= File.join(Attacheable.root, 'public')
     end
     
     def attachment_basename
