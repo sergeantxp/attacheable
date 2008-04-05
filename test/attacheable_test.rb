@@ -115,11 +115,13 @@ class AttacheableTest < Test::Unit::TestCase
   end
   
   def test_image_with_wrong_type
-    input = File.open(File.dirname(__FILE__)+"/fixtures/wrong_type")
-    input.extend(TestUploadExtension)
-    image = Image.new(:uploaded_data => input)
-    assert !image.save, "Image should not be saved"
-    assert image.errors.on(:uploaded_data).size > 0, "Uploaded data is of wrong type"
+    silence_stderr do
+      input = File.open(File.dirname(__FILE__)+"/fixtures/wrong_type")
+      input.extend(TestUploadExtension)
+      image = Image.new(:uploaded_data => input)
+      assert !image.save, "Image should not be saved"
+      assert image.errors.on(:uploaded_data).size > 0, "Uploaded data is of wrong type"
+    end
   end
 
   def test_with_sti
@@ -133,15 +135,17 @@ class AttacheableTest < Test::Unit::TestCase
   end
   
   def test_save_raw_binary
-    Image.attachment_options[:valid_filetypes] = :all
-    input = File.open(File.dirname(__FILE__)+"/fixtures/wrong_type")
-    input.extend(TestUploadExtension)
-    image = Image.new(:uploaded_data => input)
-    assert image.save, "Image should be saved"
-    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/wrong_type"), "File should be uploaded"
-    assert !image.send(:full_filename_with_creation, :preview)
-    image.destroy
-    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+    silence_stderr do
+      Image.attachment_options[:valid_filetypes] = :all
+      input = File.open(File.dirname(__FILE__)+"/fixtures/wrong_type")
+      input.extend(TestUploadExtension)
+      image = Image.new(:uploaded_data => input)
+      assert image.save, "Image should be saved"
+      assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/wrong_type"), "File should be uploaded"
+      assert !image.send(:full_filename_with_creation, :preview)
+      image.destroy
+      assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+    end
   end
   
   def test_create_thumbnail
