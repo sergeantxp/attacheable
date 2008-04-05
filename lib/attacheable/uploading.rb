@@ -47,12 +47,12 @@ module Attacheable
       
       silence_stderr do
         output = `identify "#{path}"`
-        if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
-          file_type = match_data[1].to_s.downcase
-          width = match_data[2]
-          height = match_data[3]
-          return [file_type, width, height]
-        end
+      end
+      if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
+        file_type = match_data[1].to_s.downcase
+        width = match_data[2]
+        height = match_data[3]
+        return [file_type, width, height]
       end
     end
     
