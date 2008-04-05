@@ -24,7 +24,7 @@ end
 class Image < ActiveRecord::Base
   has_attachment :thumbnails => {:medium => "120x", :large => "800x600", :preview => "100x100"},
     :croppable_thumbnails => %w(preview)
-  validates_as_attachment
+  validates_as_attachment :message => "Please upload an image file."
 end
 
 class Photo < Image
@@ -120,6 +120,7 @@ class AttacheableTest < Test::Unit::TestCase
    image = Image.new(:uploaded_data => input)
    assert !image.save, "Image should not be saved"
    assert image.errors.on(:uploaded_data).size > 0, "Uploaded data is of wrong type"
+   assert_equal "Please upload an image file.", image.errors.on(:uploaded_data), "Validation message is the one used with :message"
   end
 
   def test_with_sti

@@ -48,7 +48,10 @@ class ActiveRecord::Base
   #
   # Currently it will check valid filetype (unless option valid_filetypes set to :all)
   #
-  def self.validates_as_attachment
+  def self.validates_as_attachment(options = {})
+    options[:message] ||= "Incorrect file type. Valid file types include: #{attachment_options[:valid_filetypes].to_sentence}"
+    self.attachment_options[:validation_message] = options[:message]
+    
     validate :valid_filetype?
   end
 end
@@ -167,7 +170,7 @@ module Attacheable
   public
 
   def valid_filetype? #:nodoc:
-    errors.add("uploaded_data", "Incorrect file type. Valid file types include: #{attachment_options[:valid_filetypes].to_sentence}") if @save_new_attachment && !@valid_filetype
+    errors.add("uploaded_data", attachment_options[:validation_message]) if @save_new_attachment && !@valid_filetype
   end
 
   # Main method, that accepts uploaded data
