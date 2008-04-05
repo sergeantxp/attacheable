@@ -167,7 +167,7 @@ module Attacheable
   public
 
   def valid_filetype? #:nodoc:
-    errors.add("uploaded_data", "Неправильный тип файла. Должен быть один из: #{attachment_options[:valid_filetypes].join(", ")}") if @save_new_attachment && !@valid_filetype
+    errors.add("uploaded_data", "Incorrect file type. Valid file types include: #{attachment_options[:valid_filetypes].to_array}") if @save_new_attachment && !@valid_filetype
   end
 
   # Main method, that accepts uploaded data
