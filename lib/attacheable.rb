@@ -197,7 +197,7 @@ module Attacheable
 
   def crop_and_thumbnail(thumbnail, thumbnail_path)
     if !respond_to?(:width) || !respond_to?(:height)
-      file_type, width, height = identify_file_type(full_filename)
+      file_type, width, height = identify_image_properties(full_filename)
     end
     album_x, album_y = attachment_options[:thumbnails][thumbnail.to_sym].split("x").map &:to_i
     scale_x = width.to_f / album_x
