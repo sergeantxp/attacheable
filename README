@@ -1,0 +1,66 @@
+attacheable
+===========
+
+attacheable is a Rails/Merb plugin for working with attachments, mostly image attachments.
+
+It is based on file_column, acts_as_attachment and attachment_fu plugins which have some shortcomings:
+
+1. Every single image thumbnail has its own record in the database.
+2. There is no method provided to regenerate thumbnails from an uploaded image.
+3. No chance to do on-the-fly thumbnail generation.
+4. Too many "engines" for working with images (attachment_fu) -- using ImageMagick command-like utilities is enough for most tasks (resizing and cropping of images); also, using command-line utilities instead of RMagick saves your memory.
+5. It is not simple to crop images.
+
+Features
+========
+
+attacheable is a fork of attachment_fu plugin by technoweenie (http://svn.techno-weenie.net/projects/plugins/attachment_fu/) with implementation of the following features:
+
+1. Disk-only file storage.
+2. All image-related work is done using command-line utilities: identify, convert, mogrify
+3. One image with *all* thumbnails maps to *one* record in the database.
+4. You can crop images.
+5. You can regenerate thumbnails any time you want.
+6. When deleting an image, the corresponding filesystem catalog for the record is deleted -- this deletes all thumbnails and all files that may be generated for this record by other plugins. 
+
+Plus, there is an experimental feature of copying file attachments over scp (useful when you have a Rails cluster).
+
+Usage
+=====
+
+Create a migration:
+
+	create_table :images do |t|
+	  t.string :filename
+	  t.string :content_type
+	  t.integer :width
+	  t.integer :height
+	  t.string :type
+	end
+
+This goes to your ActiveRecord:
+
+	class Image < ActiveRecord::Base
+	  has_attachment :thumbnails => {:medium => "120x", :large => "800x600", :preview => "100x100"},
+	    :croppable_thumbnails => %w(preview)
+	  validates_as_attachment
+	end
+
+In your view (editing form):
+
+  Use uploaded_data field.
+
+In your view (view a record):
+
+	<%= image_tag @image.public_filename(:preview) %>
+
+You can use regenerate_thumbnails! method to regenerate all thumbnails for an image, like this:
+
+  Image.regenerate_thumbnails!(:preview)
+
+
+Authors
+=======
+
+Max Lapshin <max@maxidoors.ru>, http://maxidoors.ru
+Yaroslav Markin <yaroslav@markin.net>
