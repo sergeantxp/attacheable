@@ -145,6 +145,20 @@ class AttacheableTest < Test::Unit::TestCase
     assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
   end
   
+  def test_save_msword
+    Image.attachment_options[:valid_filetypes] = :all
+    input = File.open(File.dirname(__FILE__)+"/fixtures/test.doc")
+    input.extend(TestUploadExtension)
+    input.content_type = "application/ms-word"
+    image = Image.new(:uploaded_data => input)
+    assert image.save, "Image should be saved"
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/test.doc"), "File should be uploaded"
+    assert !image.send(:full_filename_with_creation, :preview)
+    assert_equal "/system/images/0000/0001/test.doc", image.public_filename
+    image.destroy
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+  end
+  
   def test_create_thumbnail
     input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
     input.extend(TestUploadExtension)

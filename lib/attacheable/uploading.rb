@@ -31,20 +31,23 @@ module Attacheable
     
     def identify_uploaded_file_type
       return unless @tempfile
-      file_type, width, height = identify_file_type(@tempfile.path)
-      if file_type
-        self.width = width if(respond_to?(:width=))
-        self.height = height if(respond_to?(:height=))
-        self.content_type = "image/#{file_type}"
-        file_type
-      else
-        self.content_type = @tempfile.content_type if @tempfile.respond_to?(:content_type)
+      self.content_type = @tempfile.content_type if @tempfile.respond_to?(:content_type)
+
+      if content_type.blank? || content_type =~ /image\//
+        file_type, width, height = identify_image_properties(@tempfile.path)
+        if file_type
+          self.width = width if(respond_to?(:width=))
+          self.height = height if(respond_to?(:height=))
+          self.content_type = "image/#{file_type}"
+          file_type
+        end
       end
     end
     
-    def identify_file_type(path)
+    def identify_image_properties(path)
       return [nil,nil,nil] if path.blank?
       
+      output = nil
       silence_stderr do
         output = `identify "#{path}"`
       end
