@@ -25,7 +25,7 @@ spec = Gem::Specification.new do |s|
   5. create only one row in table for one image. No separate rows for each thumbnail."
   s.rubyforge_project = "attacheable"
   s.has_rdoc          = false
-  s.files = FileList["**"].exclude(".git").to_a
+  s.files = FileList["**/**"].exclude(".git").to_a
   
 end
 
