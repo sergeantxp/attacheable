@@ -33,7 +33,7 @@ module Attacheable
       return unless @tempfile
       self.content_type = @tempfile.content_type if @tempfile.respond_to?(:content_type)
 
-      if content_type.blank? || content_type =~ /image\//
+      if content_type.blank? || content_type =~ /image\// || content_type == "application/octet-stream"
         file_type, width, height = identify_image_properties(@tempfile.path)
         if file_type
           self.width = width if(respond_to?(:width=))

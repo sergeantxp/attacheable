@@ -73,6 +73,22 @@ class AttacheableTest < Test::Unit::TestCase
     assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
   end
   
+  def test_image_creation_from_flash
+    input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
+    input.extend(TestUploadExtension)
+    input.content_type = "application/octet-stream"
+    assert_equal "life.jpg", input.original_filename, "should look like uploaded file"
+    image = Image.new(:uploaded_data => input)
+    assert_equal "life_medium.jpg", image.send(:thumbnail_name_for, :medium), "should generate right thumbnail filename"
+    assert image.save, "Image should be saved"
+    assert_equal "life", image.attachment_basename
+    assert_equal ".jpg", image.attachment_extname
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life.jpg"), "File should be saved"
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_medium.jpg"), "Thumbnails should not be generated"
+    image.destroy
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+  end
+  
   def test_merb_image_creation
     path = File.dirname(__FILE__)+"/fixtures/life.jpg"
     input = {"content_type"=>"image/jpeg", "size"=>File.size(path), "tempfile"=>File.open(path), "filename"=>"life.jpg"}
