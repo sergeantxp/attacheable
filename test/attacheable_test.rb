@@ -91,7 +91,7 @@ class AttacheableTest < Test::Unit::TestCase
   
   def test_merb_image_creation
     path = File.dirname(__FILE__)+"/fixtures/life.jpg"
-    input = {"content_type"=>"image/jpeg", "size"=>File.size(path), "tempfile"=>File.open(path), "filename"=>"life.jpg"}
+    input = {"size"=>File.size(path), "tempfile"=>File.open(path), "filename"=>"life.jpg"}
     image = Image.new(:uploaded_data => input)
     assert image.save, "Image should be saved"
     assert_equal "life", image.attachment_basename
