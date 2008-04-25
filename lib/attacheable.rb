@@ -156,6 +156,7 @@ module Attacheable
     else
       create_thumbnail(thumbnail, thumbnail_path)
     end
+    after_create_thumbnail(thumbnail, thumbnail_path) if respond_to?(:after_create_thumbnail)
     thumbnail_path
   end
 
