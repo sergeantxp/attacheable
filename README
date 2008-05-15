@@ -42,7 +42,7 @@ This goes to your ActiveRecord:
 
 	class Image < ActiveRecord::Base
 	  has_attachment :thumbnails => {:medium => "120x", :large => "800x600", :preview => "100x100"},
-	    :croppable_thumbnails => %w(preview)
+	    :croppable_thumbnails => %w(preview), :path_prefix => 'public/assets/images', :autocreate => true
 	  validates_as_attachment
 	end
 
@@ -54,6 +54,14 @@ In your view (view a record):
 
 	<%= image_tag @image.public_filename(:preview) %>
 
+Note that if you're migrating from acts_as_attachment, you may need to specify partitioned_path like this:
+
+  class Image
+    def partitioned_path(*args)
+      [id.to_s] + args
+    end
+  end
+  
 You can use regenerate_thumbnails! method to regenerate all thumbnails for an image, like this:
 
   Image.regenerate_thumbnails!(:preview)

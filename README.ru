@@ -51,7 +51,7 @@
 
 	<%= image_tag @image.public_filename(:preview) %>
 
-Если мигрируете с acts_as_attachment, то полезно будет перекрыть метод partioned_path:
+Если мигрируете с acts_as_attachment, то полезно будет перекрыть метод partitioned_path:
 
 	class Image
 	  def partitioned_path(*args)
