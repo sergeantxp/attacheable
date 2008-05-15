@@ -42,7 +42,7 @@
 
 	class Image < ActiveRecord::Base
 	  has_attachment :thumbnails => {:medium => "120x", :large => "800x600", :preview => "100x100"},
-	    :croppable_thumbnails => %w(preview)
+	    :croppable_thumbnails => %w(preview), :path_prefix => 'public/assets/images', :autocreate => true
 	  validates_as_attachment
 	end
 
@@ -51,4 +51,11 @@
 
 	<%= image_tag @image.public_filename(:preview) %>
 
+Если мигрируете с acts_as_attachment, то полезно будет перекрыть метод partioned_path:
+
+	class Image
+	  def partitioned_path(*args)
+	    [id.to_s] + args
+	  end
+	end
 
