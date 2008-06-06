@@ -36,6 +36,7 @@ class ActiveRecord::Base
     
     options.with_indifferent_access
     options[:autocreate] ||= false
+    options[:force_autocreate] ||= false
     options[:thumbnails] ||= {}
     options[:thumbnails].symbolize_keys!.with_indifferent_access
     options[:croppable_thumbnails] ||= []
@@ -75,6 +76,17 @@ module Attacheable
     return File.dirname(__FILE__)+"/../.."
   end
 
+
+  def destroy_thumbnails!(thumbnail = nil)
+    return if filename.blank?
+    if thumbnail
+      FileUtils.rm_f(full_filename_without_creation(thumbnail))
+    else
+      to_remove = Dir["#{File.dirname(full_filename_without_creation)}/*"] - [full_filename_without_creation]
+      FileUtils.rm_f(to_remove)
+    end
+  end
+  
   module ClassMethods
 
     #
@@ -83,15 +95,7 @@ module Attacheable
     def regenerate_thumbnails!(thumbnail = nil)
       connection.select_values("select id from #{table_name}").each do |object_id|
         object = find_by_id(object_id)
-        if object && object.filename
-          if thumbnail
-            FileUtils.rm_f(object.full_filename_without_creation(thumbnail))
-          else
-            to_remove = Dir["#{File.dirname(object.full_filename_without_creation)}/*"] - [object.full_filename_without_creation]
-            FileUtils.rm_f(to_remove)
-          end
-          #object.full_filename_with_creation(thumbnail)
-        end
+        object.destroy_thumbnails!(thumbnail)
       end
     end
   
@@ -149,8 +153,8 @@ module Attacheable
   def create_thumbnail_if_required(thumbnail)
     thumbnail_path = full_filename_without_creation(thumbnail)
     return thumbnail_path unless thumbnail
-    return thumbnail_path if File.exists?(thumbnail_path)
-    return unless /image\//.match(content_type)
+    (return thumbnail_path if File.exists?(thumbnail_path)) unless attachment_options[:force_autocreate]
+    return thumbnail_path unless /image\//.match(content_type)
     if attachment_options[:croppable_thumbnails].include?(thumbnail.to_sym)
       crop_and_thumbnail(thumbnail, thumbnail_path)
     else
@@ -163,7 +167,7 @@ module Attacheable
   def create_thumbnail(thumbnail, thumbnail_path)
     return nil unless File.exists?(full_filename)
     return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
-    `convert -thumbnail #{attachment_options[:thumbnails][thumbnail.to_sym]} "#{full_filename}" "#{thumbnail_path}"`
+    `convert "#{full_filename}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" "#{thumbnail_path}"`
     thumbnail_path
   end
 

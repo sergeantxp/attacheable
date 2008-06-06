@@ -112,6 +112,32 @@ class AttacheableTest < Test::Unit::TestCase
     assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
   end
   
+  def test_file_renaming
+    input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
+    input.extend(TestUploadExtension)
+    assert_equal "life.jpg", input.original_filename, "should look like uploaded file"
+    image = Image.new(:uploaded_data => input)
+    assert_equal "life_medium.jpg", image.send(:thumbnail_name_for, :medium), "should generate right thumbnail filename"
+    assert image.save, "Image should be saved"
+    assert_equal "life", image.attachment_basename
+    assert_equal ".jpg", image.attachment_extname
+    image.public_filename(:medium)
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life.jpg"), "File should be saved"
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_medium.jpg"), "Thumbnails should be generated on demand"
+    
+    image = Image.find(1)
+    image.filename = "nonlife.jpg"
+    image.save
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life.jpg"), "Old filename should not be kept"
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_medium.jpg"), "Thumbnails on renaming should be destroyd"
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/nonlife.jpg"), "File should be saved"
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/nonlife_medium.jpg"), "Thumbnails on renaming should not be autocreated"
+    
+    image.destroy
+    assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
+  end
+  
+  
   def test_image_with_autocreation
     Image.attachment_options[:autocreate] = true
     input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
