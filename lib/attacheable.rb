@@ -125,7 +125,7 @@ module Attacheable
     return "" if filename.blank?
     attachment_options[:autocreate] ? full_filename_with_creation(thumbnail) : full_filename_without_creation(thumbnail)
   end
-
+  
   def full_filename_by_path(path) #:nodoc:
     return if filename.blank?
     thumbnail = path.gsub(%r((^#{Regexp.escape(attachment_basename)}_)(\w+)(#{Regexp.escape(attachment_extname)})$), '\2')
@@ -140,6 +140,14 @@ module Attacheable
   def public_filename(thumbnail = nil)
     return "" if filename.blank?
     full_filename(thumbnail).gsub %r(^#{Regexp.escape(base_path)}), ''
+  end
+
+  def image_width(thumbnail = nil)
+    `identify -format "%w" "#{full_filename(thumbnail)}"`.to_i
+  end
+
+  def image_height(thumbnail = nil)
+    `identify -format "%w" "#{full_filename(thumbnail)}"`.to_i
   end
 
   protected
@@ -201,9 +209,7 @@ module Attacheable
 
 
   def crop_and_thumbnail(thumbnail, thumbnail_path)
-    if !respond_to?(:width) || !respond_to?(:height)
-      file_type, width, height = identify_image_properties(full_filename)
-    end
+    file_type, width, height = identify_image_properties(full_filename)
     album_x, album_y = attachment_options[:thumbnails][thumbnail.to_sym].split("x").map &:to_i
     scale_x = width.to_f / album_x
     scale_y = height.to_f / album_y
