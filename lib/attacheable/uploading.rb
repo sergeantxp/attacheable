@@ -2,7 +2,7 @@ module Attacheable
   module Uploading
     def prepare_uploaded_file(file_data)
       return prepare_merb_uploaded_file(file_data) if file_data.is_a?(Hash) && file_data["tempfile"]
-      return nil if file_data.nil? || !file_data.respond_to?(:original_filename) || !respond_to?(:filename=)
+      return nil if file_data.blank? || !file_data.respond_to?(:original_filename) || !respond_to?(:filename=)
       
       self.filename = file_data.original_filename
       if file_data.is_a?(StringIO)
