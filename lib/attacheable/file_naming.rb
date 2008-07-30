@@ -1,7 +1,7 @@
 module Attacheable
   module FileNaming
     def full_filename_with_creation(thumbnail = nil) #:nodoc:
-      create_thumbnail_if_required(thumbnail)
+      create_thumbnail_if_required(thumbnail) 
     end
 
     def full_filename_without_creation(thumbnail = nil) #:nodoc:

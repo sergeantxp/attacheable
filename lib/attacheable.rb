@@ -162,7 +162,7 @@ module Attacheable
     thumbnail_path = full_filename_without_creation(thumbnail)
     return thumbnail_path unless thumbnail
     (return thumbnail_path if File.exists?(thumbnail_path)) unless attachment_options[:force_autocreate]
-    return thumbnail_path unless /image\//.match(content_type)
+    return nil unless /image\//.match(content_type)
     if attachment_options[:croppable_thumbnails].include?(thumbnail.to_sym)
       crop_and_thumbnail(thumbnail, thumbnail_path)
     else
