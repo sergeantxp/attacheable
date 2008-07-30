@@ -239,8 +239,9 @@ module Attacheable
   def rename_file
     return unless @old_filename && @old_filename != full_filename
     if @save_new_attachment && File.exists?(@old_filename)
-      FileUtils.rm @old_filename
+      FileUtils.rm_f(File.dirname(@old_filename)+"/*")
     elsif File.exists?(@old_filename)
+      (Dir[File.dirname(@old_filename)+"/*"]-[@old_filename]).each {|f| FileUtils.rm_f(f)}
       FileUtils.mv @old_filename, full_filename
     end
     @old_filename =  nil

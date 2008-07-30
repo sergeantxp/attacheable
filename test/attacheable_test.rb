@@ -113,6 +113,7 @@ class AttacheableTest < Test::Unit::TestCase
   end
   
   def test_file_renaming
+    Image.attachment_options[:autocreate] = true
     input = File.open(File.dirname(__FILE__)+"/fixtures/life.jpg")
     input.extend(TestUploadExtension)
     assert_equal "life.jpg", input.original_filename, "should look like uploaded file"
@@ -121,7 +122,7 @@ class AttacheableTest < Test::Unit::TestCase
     assert image.save, "Image should be saved"
     assert_equal "life", image.attachment_basename
     assert_equal ".jpg", image.attachment_extname
-    image.public_filename(:medium)
+    assert_equal "/system/images/0000/0001/life_medium.jpg", image.public_filename(:medium)
     assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life.jpg"), "File should be saved"
     assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/life_medium.jpg"), "Thumbnails should be generated on demand"
     
