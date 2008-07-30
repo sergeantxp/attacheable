@@ -34,7 +34,7 @@ Rake::GemPackageTask.new(spec) do |package|
 end
 
 
-task :default => [ :test ]
+#task :default => [ :test ]
 
 desc "Run all tests (requires BlueCloth, RedCloth and Rails for integration tests)"
 Rake::TestTask.new("test") { |t|
