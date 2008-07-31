@@ -1,5 +1,6 @@
 require File.dirname(__FILE__)+"/attacheable/file_naming"
 require File.dirname(__FILE__)+"/attacheable/uploading"
+require 'net/http'
 class ActiveRecord::Base
   #
   # In model write has_attachment (conflicts with acts_as_attachment) with options:
@@ -193,6 +194,25 @@ module Attacheable
     file_type = identify_uploaded_file_type
     if accepts_file_type_for_upload?(file_type)
       handle_uploaded_file
+    end
+  end
+  
+  def source_url=(url)
+    return if url.blank?
+    http_getter = Net::HTTP
+    uri = URI.parse(url)
+    response = http_getter.start(uri.host, uri.port) {|http| http.get(uri.path) }
+    case response
+    when Net::HTTPSuccess
+      file_data = response.body
+      return nil if file_data.nil? || file_data.size == 0
+      filename = url.split("/").last
+      tempfile = Tempfile.new(filename)
+      tempfile.write(file_data)
+      tempfile.close
+      self.uploaded_data = {"tempfile" => tempfile, "filename" => filename, "size" => file_data.size}
+    else
+      return nil
     end
   end
   
