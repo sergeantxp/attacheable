@@ -243,8 +243,12 @@ module Attacheable
     return filename if File.exists?(RAILS_ROOT + "/public/" + filename)
     return filename if attachment_options[:production_host].blank?
     FileUtils.mkdir_p(File.dirname(full_filename))
-    File.open(full_filename, "w+") do |f|
-      f << open("http://#{attachment_options[:production_host]}"+public_filename).read
+    begin
+      image = open("http://#{attachment_options[:production_host]}"+public_filename).read
+      File.open(full_filename, "w+") do |f|
+        f << image
+      end
+    rescue Exception => e
     end
     public_filename_without_download(*args)
   end
