@@ -88,6 +88,19 @@ module Attacheable
   end
   
   module ClassMethods
+    
+    #
+    # If you regularly dump Your database from production to development, You will get problems
+    # with downloading assets. It is a real problem to download 8Gb of unused pictures.
+    # Download only those photos, which you need.
+    #
+    #   autosave_to_development("prophotos.ru") if RAILS_ENV == "development"
+    #
+    # Warning!! It will very slow.
+    def autosave_to_development(production_host)
+      attachment_options[:production_host] = production_host
+      alias_method_chain :public_filename, :download
+    end
 
     #
     # You can delete all thumbnails or with selected type
@@ -203,6 +216,17 @@ module Attacheable
   def filename=(value)
     @old_filename = full_filename unless filename.nil? || @old_filename
     write_attribute :filename, sanitize_filename(value)
+  end
+
+  def public_filename_with_download(*args)
+    filename = public_filename_without_download(*args)
+    return filename if File.exists?(RAILS_ROOT + "/public/" + filename)
+    return filename if attachment_options[:production_host].blank?
+    FileUtils.mkdir_p(File.dirname(full_filename))
+    File.open(full_filename, "w+") do |f|
+      f << open("http://#{attachment_options[:production_host]}"+public_filename).read
+    end
+    public_filename_without_download(*args)
   end
 
   protected
