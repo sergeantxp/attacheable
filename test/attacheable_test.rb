@@ -248,6 +248,12 @@ class AttacheableTest < Test::Unit::TestCase
     assert !File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001"), "Directory should be cleaned"
   end
   
+  def test_save_from_web
+    image = Image.new(:source_url => "http://ya.ru/logo.gif")
+    assert image.save, "Image should be saved with http source"
+    assert File.exists?(File.dirname(__FILE__)+"/public/system/images/0000/0001/logo.gif"), "file should be saved"
+  end
+  
   def test_nil_upload
     image = Image.new(:uploaded_data => nil)
     assert image.save, "Image should be saved with empty file"
