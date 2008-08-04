@@ -107,7 +107,7 @@ module Attacheable
     # You can delete all thumbnails or with selected type
     #
     def regenerate_thumbnails!(thumbnail = nil)
-      connection.select_values("select id from #{table_name}").each do |object_id|
+      connection.select_values(send(:construct_finder_sql, :select => "id")).each do |object_id|
         object = find_by_id(object_id)
         object.destroy_thumbnails!(thumbnail)
       end
