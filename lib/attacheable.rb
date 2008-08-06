@@ -161,7 +161,7 @@ module Attacheable
   end
 
   def image_height(thumbnail = nil)
-    `identify -format "%w" "#{full_filename(thumbnail)}"`.to_i
+    `identify -format "%h" "#{full_filename(thumbnail)}"`.to_i
   end
 
   protected
