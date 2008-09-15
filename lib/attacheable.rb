@@ -143,158 +143,162 @@ module Attacheable
   def full_filename_by_path(path) #:nodoc:
     return if filename.blank?
     thumbnail = path.gsub(%r((^#{Regexp.escape(attachment_basename)}_)(\w+)(#{Regexp.escape(attachment_extname)})$), '\2')
-    return unless thumbnail
-    return unless attachment_options[:thumbnails][thumbnail.to_sym]
-    full_filename_with_creation(thumbnail.to_sym)
-  end
-
-  # Gets the public path to the file, visible to browser
-  # The optional thumbnail argument will output the thumbnail's filename.
-  # If options[:autocreate] is set to true, this method will autogenerate thumbnail
-  def public_filename(thumbnail = nil)
-    return "" if filename.blank?
-    full_filename(thumbnail).gsub %r(^#{Regexp.escape(base_path)}), ''
-  end
-
-  def image_width(thumbnail = nil)
-    `identify -format "%w" "#{full_filename(thumbnail)}"`.to_i
-  end
-
-  def image_height(thumbnail = nil)
-    `identify -format "%h" "#{full_filename(thumbnail)}"`.to_i
-  end
-
-  protected
-
-  # overrwrite this to do your own app-specific partitioning. 
-  # you can thank Jamis Buck for this: http://www.37signals.com/svn/archives2/id_partitioning.php
-  def partitioned_path(*args)
-    ("%08d" % id).scan(/..../) + args
-  end
-
-  def create_thumbnail_if_required(thumbnail)
-    thumbnail_path = full_filename_without_creation(thumbnail)
-    return thumbnail_path unless thumbnail
-    (return thumbnail_path if File.exists?(thumbnail_path)) unless attachment_options[:force_autocreate]
-    return nil unless /image\//.match(content_type)
-    if attachment_options[:croppable_thumbnails].include?(thumbnail.to_sym)
-      crop_and_thumbnail(thumbnail, thumbnail_path)
-    else
-      create_thumbnail(thumbnail, thumbnail_path)
+      return unless thumbnail
+      return unless attachment_options[:thumbnails][thumbnail.to_sym]
+      full_filename_with_creation(thumbnail.to_sym)
     end
-    after_create_thumbnail(thumbnail, thumbnail_path) if respond_to?(:after_create_thumbnail)
-    thumbnail_path
-  end
 
-  def create_thumbnail(thumbnail, thumbnail_path)
-    return nil unless File.exists?(full_filename)
-    return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
-    `convert "#{full_filename}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" "#{thumbnail_path}"`
-    thumbnail_path
-  end
-
-
-  public
-
-  def valid_filetype? #:nodoc:
-    errors.add("uploaded_data", attachment_options[:validation_message]) if @save_new_attachment && !@valid_filetype
-  end
-
-  # Main method, that accepts uploaded data
-  #
-  def uploaded_data=(file_data)
-    prepare_uploaded_file(file_data)
-    file_type = identify_uploaded_file_type
-    if accepts_file_type_for_upload?(file_type)
-      handle_uploaded_file
+    # Gets the public path to the file, visible to browser
+    # The optional thumbnail argument will output the thumbnail's filename.
+    # If options[:autocreate] is set to true, this method will autogenerate thumbnail
+    def public_filename(thumbnail = nil)
+      return "" if filename.blank?
+      full_filename(thumbnail).gsub %r(^#{Regexp.escape(base_path)}), ''
     end
-  end
-  
-  def source_url=(url)
-    return if url.blank?
-    http_getter = Net::HTTP
-    uri = URI.parse(url)
-    response = http_getter.start(uri.host, uri.port) {|http| http.get(uri.path) }
-    case response
-    when Net::HTTPSuccess
-      file_data = response.body
-      return nil if file_data.nil? || file_data.size == 0
-      filename = url.split("/").last
-      tempfile = Tempfile.new(filename)
-      tempfile.write(file_data)
-      tempfile.close
-      self.uploaded_data = {"tempfile" => tempfile, "filename" => filename, "size" => file_data.size}
-    else
-      return nil
+
+    def image_width(thumbnail = nil)
+      `identify -format "%w" "#{full_filename(thumbnail)}"`.to_i
     end
-  end
-  
-  def image_size
-    [width.to_s, height.to_s] * 'x'
-  end
 
-  def filename=(value)
-    @old_filename = full_filename unless filename.nil? || @old_filename
-    write_attribute :filename, sanitize_filename(value)
-  end
+    def image_height(thumbnail = nil)
+      `identify -format "%h" "#{full_filename(thumbnail)}"`.to_i
+    end
 
-  def public_filename_with_download(*args)
-    filename = public_filename_without_download(*args)
-    return filename if File.exists?(RAILS_ROOT + "/public/" + filename)
-    return filename if attachment_options[:production_host].blank?
-    FileUtils.mkdir_p(File.dirname(full_filename))
-    begin
-      image = open("http://#{attachment_options[:production_host]}"+public_filename).read
-      File.open(full_filename, "w+") do |f|
-        f << image
+    protected
+
+    # overrwrite this to do your own app-specific partitioning.
+    # you can thank Jamis Buck for this: http://www.37signals.com/svn/archives2/id_partitioning.php
+    def partitioned_path(*args)
+      ("%08d" % id).scan(/..../) + args
+    end
+
+    def create_thumbnail_if_required(thumbnail)
+      thumbnail_path = full_filename_without_creation(thumbnail)
+      return thumbnail_path unless thumbnail
+      (return thumbnail_path if File.exists?(thumbnail_path)) unless attachment_options[:force_autocreate]
+      return nil unless /image\//.match(content_type)
+      if attachment_options[:croppable_thumbnails].include?(thumbnail.to_sym)
+        crop_and_thumbnail(thumbnail, thumbnail_path)
+      else
+        create_thumbnail(thumbnail, thumbnail_path)
       end
-    rescue Exception => e
+      after_create_thumbnail(thumbnail, thumbnail_path) if respond_to?(:after_create_thumbnail)
+      thumbnail_path
     end
-    public_filename_without_download(*args)
-  end
 
-  protected
-
-
-  def crop_and_thumbnail(thumbnail, thumbnail_path)
-    file_type, width, height = identify_image_properties(full_filename)
-    album_x, album_y = attachment_options[:thumbnails][thumbnail.to_sym].split("x").map &:to_i
-    return nil unless album_x && album_y && width && height
-    scale_x = width.to_f / album_x
-    scale_y = height.to_f / album_y
-    if scale_x > scale_y
-      x, y = (album_x*scale_y).floor, height
-      shift_x, shift_y = (width.to_i - x)/2, 0
-    else
-      x, y = width, (album_y*scale_x).floor
-      shift_x, shift_y = 0, (height.to_i - y)/2
+    def create_thumbnail(thumbnail, thumbnail_path)
+      return nil unless File.exists?(full_filename)
+      if thumbnail.is_a?(String) && thumbnail =~ /\d+[<>]?x\d+[<>]?/i
+        `convert "#{full_filename}" -thumbnail "#{thumbnail}" "#{thumbnail_path}"`
+      else
+        return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
+        `convert "#{full_filename}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" "#{thumbnail_path}"`
+      end
+      thumbnail_path
     end
-#    FileUtils.cp(full_filename_without_creation, thumbnail_path)
-    `convert -crop #{x}x#{y}+#{shift_x}+#{shift_y} "#{full_filename}" "#{thumbnail_path}"`
-    `mogrify  -geometry #{album_x}x#{album_y} "#{thumbnail_path}"`
-    thumbnail_path
-  end
 
-  # Destroys the file.  Called in the after_destroy callback
-  def remove_files
-    return unless filename
-    FileUtils.rm_rf(File.dirname(full_filename_without_creation))
-  rescue
-    logger.info "Exception destroying  #{full_filename.inspect}: [#{$!.class.name}] #{$1.to_s}"
-    logger.warn $!.backtrace.collect { |b| " > #{b}" }.join("\n")
-  end
 
-  # Renames the given file before saving
-  def rename_file
-    return unless @old_filename && @old_filename != full_filename
-    if @save_new_attachment && File.exists?(@old_filename)
-      FileUtils.rm_f(File.dirname(@old_filename)+"/*")
-    elsif File.exists?(@old_filename)
-      (Dir[File.dirname(@old_filename)+"/*"]-[@old_filename]).each {|f| FileUtils.rm_f(f)}
-      FileUtils.mv @old_filename, full_filename
+    public
+
+    def valid_filetype? #:nodoc:
+      errors.add("uploaded_data", attachment_options[:validation_message]) if @save_new_attachment && !@valid_filetype
     end
-    @old_filename =  nil
-    true
-  end
+
+    # Main method, that accepts uploaded data
+    #
+    def uploaded_data=(file_data)
+      prepare_uploaded_file(file_data)
+      file_type = identify_uploaded_file_type
+      if accepts_file_type_for_upload?(file_type)
+        handle_uploaded_file
+      end
+    end
+  
+    def source_url=(url)
+      return if url.blank?
+      http_getter = Net::HTTP
+      uri = URI.parse(url)
+      response = http_getter.start(uri.host, uri.port) {|http| http.get(uri.path) }
+      case response
+      when Net::HTTPSuccess
+        file_data = response.body
+        return nil if file_data.nil? || file_data.size == 0
+        filename = url.split("/").last
+        tempfile = Tempfile.new(filename)
+        tempfile.write(file_data)
+        tempfile.close
+        self.uploaded_data = {"tempfile" => tempfile, "filename" => filename, "size" => file_data.size}
+      else
+        return nil
+      end
+    end
+  
+    def image_size
+      [width.to_s, height.to_s] * 'x'
+    end
+
+    def filename=(value)
+      @old_filename = full_filename unless filename.nil? || @old_filename
+      write_attribute :filename, sanitize_filename(value)
+    end
+
+    def public_filename_with_download(*args)
+      filename = public_filename_without_download(*args)
+      return filename if File.exists?(RAILS_ROOT + "/public/" + filename)
+      return filename if attachment_options[:production_host].blank?
+      FileUtils.mkdir_p(File.dirname(full_filename))
+      begin
+        image = open("http://#{attachment_options[:production_host]}"+public_filename).read
+        File.open(full_filename, "w+") do |f|
+          f << image
+        end
+      rescue Exception => e
+      end
+      public_filename_without_download(*args)
+    end
+
+    protected
+
+
+    def crop_and_thumbnail(thumbnail, thumbnail_path)
+      file_type, width, height = identify_image_properties(full_filename)
+      album_x, album_y = attachment_options[:thumbnails][thumbnail.to_sym].split("x").map &:to_i
+      return nil unless album_x && album_y && width && height
+      scale_x = width.to_f / album_x
+      scale_y = height.to_f / album_y
+      if scale_x > scale_y
+        x, y = (album_x*scale_y).floor, height
+        shift_x, shift_y = (width.to_i - x)/2, 0
+      else
+        x, y = width, (album_y*scale_x).floor
+        shift_x, shift_y = 0, (height.to_i - y)/2
+      end
+      #    FileUtils.cp(full_filename_without_creation, thumbnail_path)
+      `convert -crop #{x}x#{y}+#{shift_x}+#{shift_y} "#{full_filename}" "#{thumbnail_path}"`
+      `mogrify  -geometry #{album_x}x#{album_y} "#{thumbnail_path}"`
+      thumbnail_path
+    end
+
+    # Destroys the file.  Called in the after_destroy callback
+    def remove_files
+      return unless filename
+      FileUtils.rm_rf(File.dirname(full_filename_without_creation))
+    rescue
+      logger.info "Exception destroying  #{full_filename.inspect}: [#{$!.class.name}] #{$1.to_s}"
+      logger.warn $!.backtrace.collect { |b| " > #{b}" }.join("\n")
+    end
+
+    # Renames the given file before saving
+    def rename_file
+      return unless @old_filename && @old_filename != full_filename
+      if @save_new_attachment && File.exists?(@old_filename)
+        FileUtils.rm_f(File.dirname(@old_filename)+"/*")
+      elsif File.exists?(@old_filename)
+        (Dir[File.dirname(@old_filename)+"/*"]-[@old_filename]).each {|f| FileUtils.rm_f(f)}
+        FileUtils.mv @old_filename, full_filename
+      end
+      @old_filename =  nil
+      true
+    end
  
-end
+  end

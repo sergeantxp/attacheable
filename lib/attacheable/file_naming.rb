@@ -15,7 +15,12 @@ module Attacheable
       basename = filename.gsub /\.\w+$/ do |s|
         ext = s; ''
       end
-      "#{basename}_#{thumbnail}#{ext}"
+
+      if thumbnail.is_a?(String) && thumbnail =~ /\d+[<>]?x\d+[<>]?/i
+        "#{basename}_#{thumbnail.hash.abs.to_s}#{ext}"
+      else
+        "#{basename}_#{thumbnail}#{ext}"
+      end
     end
 
     def public_filename_without_creation(thumbnail = nil)
