@@ -188,7 +188,7 @@ module Attacheable
 
     def create_thumbnail(thumbnail, thumbnail_path)
       return nil unless File.exists?(full_filename)
-      if thumbnail.is_a?(String) && thumbnail =~ /\d+[<>]?x\d+[<>]?/i
+      if thumbnail.is_a?(String) && thumbnail =~ /(\d+)?x(\d+)?[<>]?/i
         `convert "#{full_filename}" -thumbnail "#{thumbnail}" "#{thumbnail_path}"`
       else
         return nil unless attachment_options[:thumbnails][thumbnail.to_sym]

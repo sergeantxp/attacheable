@@ -16,7 +16,7 @@ module Attacheable
         ext = s; ''
       end
 
-      if thumbnail.is_a?(String) && thumbnail =~ /\d+[<>]?x\d+[<>]?/i
+      if thumbnail.is_a?(String) && thumbnail =~ /(\d+)?x(\d+)?[<>]?/i
         "#{basename}_#{thumbnail.hash.abs.to_s}#{ext}"
       else
         "#{basename}_#{thumbnail}#{ext}"
